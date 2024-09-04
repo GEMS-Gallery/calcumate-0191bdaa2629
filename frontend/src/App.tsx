@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, CircularProgress } from '@mui/material';
+import { Button, CircularProgress, Snackbar } from '@mui/material';
 import { backend } from 'declarations/backend';
 
 const App: React.FC = () => {
@@ -9,6 +9,7 @@ const App: React.FC = () => {
   const [waitingForSecondOperand, setWaitingForSecondOperand] = useState<boolean>(false);
   const [history, setHistory] = useState<Array<[string, number, number, number]>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchHistory();
@@ -20,6 +21,7 @@ const App: React.FC = () => {
       setHistory(fetchedHistory);
     } catch (error) {
       console.error('Error fetching history:', error);
+      setError('Failed to fetch history. Please try again.');
     }
   };
 
@@ -70,12 +72,16 @@ const App: React.FC = () => {
     setIsLoading(true);
     try {
       const result = await backend.calculate(op, firstOperand, secondOperand);
-      setDisplay(result.toString());
-      setFirstOperand(result);
-      await fetchHistory();
+      if ('ok' in result) {
+        setDisplay(result.ok.toString());
+        setFirstOperand(result.ok);
+        await fetchHistory();
+      } else {
+        setError(result.err);
+      }
     } catch (error) {
       console.error('Calculation error:', error);
-      setDisplay('Error');
+      setError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -87,6 +93,7 @@ const App: React.FC = () => {
       setHistory([]);
     } catch (error) {
       console.error('Error clearing history:', error);
+      setError('Failed to clear history. Please try again.');
     }
   };
 
@@ -129,6 +136,12 @@ const App: React.FC = () => {
         ))}
         <Button onClick={clearHistory} disabled={isLoading}>Clear History</Button>
       </div>
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+        message={error}
+      />
     </div>
   );
 };
